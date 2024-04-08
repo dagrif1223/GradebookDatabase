@@ -21,8 +21,9 @@ CREATE TABLE Course (
 CREATE TABLE Assignment (
     assignment_id INT PRIMARY KEY,
     assignment_name VARCHAR(100),
-    max_score INT,
+  	assignment_type VARCHAR(100),
   	course_id INT,
+    FOREIGN KEY (course_id) REFERENCES Course(course_id)
   	
 );
 
@@ -34,7 +35,7 @@ CREATE TABLE Student (
 
 CREATE TABLE Grade (
     grade_id INT PRIMARY KEY,
-    score INT,
+    score FLOAT,
     student_id INT,
     assignment_id INT,
     FOREIGN KEY (student_id) REFERENCES Student(student_id),
@@ -54,29 +55,68 @@ VALUES
 (2, 'Computer Science', 102, 'Software Engineering', 'Fall', 2024, 25, 20, 10, 25, 15, 5),
 (3, 'Computer Science', 103, 'Operating Systems', 'Spring', 2024, 30, 20, 10, 20, 15, 5);       
 
-INSERT INTO Assignment (assignment_id, assignment_name, max_score)
-VALUES (1, 'Participation 1', 10),
-       (2, 'Homework 1', 20),
-       (3, 'Test 1', 100),
-       (4, 'Project 1', 50);
+INSERT INTO Assignment (assignment_id, assignment_name, assignment_type, course_id)
+VALUES (1, 'Participation', 'Participation', 1),
+       (2, 'Homework 1', 'Homework', 1),
+       (3, 'Homework 2', 'Homework', 1),
+       (4, 'Test 1', 'Test', 1),
+       (5, 'Test 2', 'Test', 1),
+       (6, 'Project', 'Project', 1),
+       (7, 'Participation', 'Participation', 2),
+       (8, 'Homework 1', 'Homework', 2),
+       (9, 'Homework 2', 'Homework', 2),
+       (10, 'Test 1', 'Test', 2),
+       (11, 'Project', 'Project', 2),
+       (12, 'Participation', 'Participation', 3),
+       (13, 'Homework 1', 'Homework', 3),
+       (14, 'Project 1', 'Project', 3),
+       (15, 'Test 1', 'Test', 3);
 
 INSERT INTO Student (student_id, first_name, last_name)
-VALUES (1, 'John', 'Doe'),
+VALUES (1, 'John', 'Quincy'),
        (2, 'Jane', 'Smith'),
        (3, 'Devin', 'Griffin'),
        (4, 'Yinka', 'Adeyemi'),
        (5, 'Peter', 'Parker'),
        (6, 'Bruce', 'Wayne');
+       
+INSERT INTO EnrolledList (course_id, student_id)
+VALUES (1, 1),
+       (1, 2),
+       (2, 3),
+       (2, 4),
+       (3, 5),
+       (3, 6);
 
 INSERT INTO Grade (grade_id, score, student_id, assignment_id)
-VALUES (1, 8, 1, 1),
-       (2, 18, 1, 2),
-       (3, 85, 1, 3),
-       (4, 45, 1, 4),
-       (5, 9, 2, 1),
-       (6, 16, 2, 2),
-       (7, 80, 2, 3),
-       (8, 42, 2, 4);
+VALUES 
+(1, 0.80, 1, 1),
+(2, 0.90, 2, 1),
+(3, 0.79, 1, 2),
+(4, 0.89, 2, 2),
+(5, 0.92, 1, 3),
+(6, 0.86, 2, 3),
+(7, 0.70, 1, 4),
+(8, 0.74, 2, 4),
+(9, 0.90, 1, 5),
+(10, 0.92, 2, 5),
+(11, 0.97, 1, 6),
+(12, 0.94, 2, 6);
+
+-- task 7
+INSERT INTO Assignment (assignment_id, assignment_name, assignment_type, course_id)
+VALUE (16, 'Test 2', 'Test', 3);
+
+-- task 9
+UPDATE Grade
+SET score = score + .02 
+WHERE assignment_id = 1;
+
+-- task 10
+UPDATE Grade
+JOIN Student ON Grade.student_id = Student.student_id
+SET score = score + .02
+WHERE Student.last_name LIKE '%Q%';
 
 
 
@@ -87,7 +127,7 @@ VALUES (1, 8, 1, 1),
 
 # commands
 
--- Display contents of the Course table
+-- Display contents of the Course table (3)
 SELECT * FROM Course;
 
 -- Display contents of the Assignment table
@@ -99,22 +139,35 @@ SELECT * FROM Student;
 -- Display contents of the Grade table
 SELECT * FROM Grade;
 
-# # task 4
-# SELECT assignment_name, AVG(score) AS average_score
-# FROM Grade
-# JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
-# GROUP BY assignment_name;
+-- Display enrolled list
+SELECT * FROM EnrolledList;
 
-# SELECT assignment_name, MAX(score) AS highest_score
-# FROM Grade
-# JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
-# GROUP BY assignment_name;
+-- Display every student from a course (task 5, query 6)
+SELECT EnrolledList.student_id, Student.first_name, Student.last_name, Course.course_name
+FROM Student, Course, EnrolledList
+WHERE EnrolledList.student_id = Student.student_id AND EnrolledList.course_id = Course.course_id AND Course.course_id = 2;
 
-# SELECT assignment_name, MIN(score) AS lowest_score
-# FROM Grade
-# JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
-# GROUP BY assignment_name;
+-- Display average/highest/lowest of an assignment (task 4, query 7, 8, 9)
+SELECT AVG(Grade.score * 100)
+FROM Grade
+WHERE Grade.assignment_id = 1;
 
+SELECT MAX(Grade.score * 100)
+FROM Grade
+WHERE Grade.assignment_id = 1;
 
--- Display everyone in Intro to Computer Science
--- SELECT Student.studentid, Student.first_name, Student.lastname
+SELECT MIN(Grade.score * 100)
+FROM Grade
+WHERE Grade.assignment_id = 1;
+
+-- List all students in a course and their scores on every assignment (task 6, query 10)
+ 
+ SELECT Grade.student_id, Student.first_name, Student.last_name, Assignment.assignment_name, Grade.score
+FROM Grade
+JOIN Student ON Grade.student_id = Student.student_id
+JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
+WHERE Assignment.course_id = 1;
+
+-- Change the percentages of the categories for a course;(task 8) 
+# UPDATE Course
+# SET 
