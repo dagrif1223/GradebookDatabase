@@ -12,9 +12,7 @@ CREATE TABLE Course (
     course_year INT,
   	course_homework FLOAT,
   	course_project FLOAT,
-  	course_quiz FLOAT,
-  	course_midterm FLOAT,
-  	course_final FLOAT,
+  	course_test FLOAT,
   	course_participation FLOAT
 );
 
@@ -49,11 +47,11 @@ CREATE TABLE EnrolledList (
   FOREIGN KEY (student_id) REFERENCES Student(student_id)
   );
 
-INSERT INTO Course (course_id, department, course_number, course_name, course_semester, course_year, course_homework, course_project, course_quiz, course_midterm, course_final, course_participation) 
+INSERT INTO Course (course_id, department, course_number, course_name, course_semester, course_year, course_homework, course_project, course_test, course_participation) 
 VALUES 
-(1, 'Computer Science', 101, 'Introduction to Computer Science', 'Fall', 2024, 20, 25, 15, 20, 15, 5),
-(2, 'Computer Science', 102, 'Software Engineering', 'Fall', 2024, 25, 20, 10, 25, 15, 5),
-(3, 'Computer Science', 103, 'Operating Systems', 'Spring', 2024, 30, 20, 10, 20, 15, 5);       
+(1, 'Computer Science', 101, 'Introduction to Computer Science', 'Fall', 2024, .20, .25, .40, .15),
+(2, 'Computer Science', 102, 'Software Engineering', 'Fall', 2024, .25, .20, .45, .5),
+(3, 'Computer Science', 103, 'Operating Systems', 'Spring', 2024, .20, .20, .25, .35);       
 
 INSERT INTO Assignment (assignment_id, assignment_name, assignment_type, course_id)
 VALUES (1, 'Participation', 'Participation', 1),
@@ -107,6 +105,11 @@ VALUES
 INSERT INTO Assignment (assignment_id, assignment_name, assignment_type, course_id)
 VALUE (16, 'Test 2', 'Test', 3);
 
+-- task 8
+UPDATE Course
+SET course_homework = 20, course_project = 40, course_test = 30, course_participation = 10
+WHERE course_id = 3;
+
 -- task 9
 UPDATE Grade
 SET score = score + .02 
@@ -117,12 +120,6 @@ UPDATE Grade
 JOIN Student ON Grade.student_id = Student.student_id
 SET score = score + .02
 WHERE Student.last_name LIKE '%Q%';
-
-
-
-
-
-
 
 
 # commands
@@ -168,6 +165,28 @@ JOIN Student ON Grade.student_id = Student.student_id
 JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
 WHERE Assignment.course_id = 1;
 
--- Change the percentages of the categories for a course;(task 8) 
-# UPDATE Course
-# SET 
+-- Compute the grade for a student (task 11)
+SELECT 
+    Student.first_name,
+    Student.last_name,
+    SUM(AssignmentWeightedScores.weighted_score) AS total_grade
+FROM
+    (SELECT 
+        Grade.student_id,
+        SUM(
+            CASE
+                WHEN Assignment.assignment_type = 'Homework' THEN Grade.score * (Course.course_homework / 2)
+                WHEN Assignment.assignment_type = 'Project' THEN Grade.score * Course.course_project
+                WHEN Assignment.assignment_type = 'Test' THEN Grade.score * (Course.course_test / 2)
+                WHEN Assignment.assignment_type = 'Participation' THEN Grade.score * Course.course_participation
+                ELSE 0
+            END
+        ) AS weighted_score
+    FROM
+        Grade
+    INNER JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
+    INNER JOIN Course ON Assignment.course_id = Course.course_id
+    GROUP BY Grade.student_id) AS AssignmentWeightedScores
+INNER JOIN Student ON AssignmentWeightedScores.student_id = Student.student_id
+WHERE
+    Student.first_name = 'John' AND Student.last_name = 'Quincy';
