@@ -124,6 +124,8 @@ WHERE Student.last_name LIKE '%Q%';
 
 # commands
 
+# commands
+
 -- Display contents of the Course table (3)
 SELECT * FROM Course;
 
@@ -175,10 +177,14 @@ FROM
         Grade.student_id,
         SUM(
             CASE
-                WHEN Assignment.assignment_type = 'Homework' THEN Grade.score * (Course.course_homework / 2)
-                WHEN Assignment.assignment_type = 'Project' THEN Grade.score * Course.course_project
-                WHEN Assignment.assignment_type = 'Test' THEN Grade.score * (Course.course_test / 2)
-                WHEN Assignment.assignment_type = 'Participation' THEN Grade.score * Course.course_participation
+                WHEN Assignment.assignment_type = 'Homework' THEN 
+                    Grade.score * (Course.course_homework / COALESCE(HomeworkCount.count, 1))
+                WHEN Assignment.assignment_type = 'Project' THEN 
+                    Grade.score * (Course.course_project / COALESCE(ProjectCount.count, 1))
+                WHEN Assignment.assignment_type = 'Test' THEN 
+                    Grade.score * (Course.course_test / COALESCE(TestCount.count, 1))
+                WHEN Assignment.assignment_type = 'Participation' THEN 
+                    Grade.score * (Course.course_participation / COALESCE(ParticipationCount.count, 1))
                 ELSE 0
             END
         ) AS weighted_score
@@ -186,7 +192,99 @@ FROM
         Grade
     INNER JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
     INNER JOIN Course ON Assignment.course_id = Course.course_id
-    GROUP BY Grade.student_id) AS AssignmentWeightedScores
+    LEFT JOIN (
+        SELECT course_id, COUNT(*) AS count
+        FROM Assignment
+        WHERE assignment_type = 'Homework'
+        GROUP BY course_id
+    ) AS HomeworkCount ON Course.course_id = HomeworkCount.course_id
+    LEFT JOIN (
+        SELECT course_id, COUNT(*) AS count
+        FROM Assignment
+        WHERE assignment_type = 'Project'
+        GROUP BY course_id
+    ) AS ProjectCount ON Course.course_id = ProjectCount.course_id
+    LEFT JOIN (
+        SELECT course_id, COUNT(*) AS count
+        FROM Assignment
+        WHERE assignment_type = 'Test'
+        GROUP BY course_id
+    ) AS TestCount ON Course.course_id = TestCount.course_id
+    LEFT JOIN (
+        SELECT course_id, COUNT(*) AS count
+        FROM Assignment
+        WHERE assignment_type = 'Participation'
+        GROUP BY course_id
+    ) AS ParticipationCount ON Course.course_id = ParticipationCount.course_id
+    GROUP BY Grade.student_id
+    ) AS AssignmentWeightedScores
+INNER JOIN Student ON AssignmentWeightedScores.student_id = Student.student_id
+WHERE
+    Student.first_name = 'John' AND Student.last_name = 'Quincy';
+
+-- task 12
+SELECT 
+    Student.first_name,
+    Student.last_name,
+    SUM(AssignmentWeightedScores.weighted_score) AS total_grade
+FROM
+    (SELECT 
+        Grade.student_id,
+        SUM(
+            CASE
+                WHEN Assignment.assignment_type = 'Homework' THEN 
+                    CASE
+                        WHEN Grade.score != LowestHomeworkGrade.lowest_score THEN
+                            Grade.score * (Course.course_homework / (HomeworkCount.count - 1))
+                        ELSE
+                            0
+                    END
+                WHEN Assignment.assignment_type = 'Project' THEN 
+                    Grade.score * (Course.course_project / COALESCE(ProjectCount.count, 1))
+                WHEN Assignment.assignment_type = 'Test' THEN 
+                    Grade.score * (Course.course_test / COALESCE(TestCount.count, 1))
+                WHEN Assignment.assignment_type = 'Participation' THEN 
+                    Grade.score * (Course.course_participation / COALESCE(ParticipationCount.count, 1))
+                ELSE 0
+            END
+        ) AS weighted_score
+    FROM
+        Grade
+    INNER JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
+    INNER JOIN Course ON Assignment.course_id = Course.course_id
+    LEFT JOIN (
+        SELECT course_id, COUNT(*) AS count
+        FROM Assignment
+        WHERE assignment_type = 'Homework'
+        GROUP BY course_id
+    ) AS HomeworkCount ON Course.course_id = HomeworkCount.course_id
+    LEFT JOIN (
+        SELECT Assignment.course_id, MIN(Grade.score) AS lowest_score
+        FROM Grade
+        INNER JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
+        WHERE Assignment.assignment_type = 'Homework'
+        GROUP BY Assignment.course_id
+    ) AS LowestHomeworkGrade ON Course.course_id = LowestHomeworkGrade.course_id
+    LEFT JOIN (
+        SELECT course_id, COUNT(*) AS count
+        FROM Assignment
+        WHERE assignment_type = 'Project'
+        GROUP BY course_id
+    ) AS ProjectCount ON Course.course_id = ProjectCount.course_id
+    LEFT JOIN (
+        SELECT course_id, COUNT(*) AS count
+        FROM Assignment
+        WHERE assignment_type = 'Test'
+        GROUP BY course_id
+    ) AS TestCount ON Course.course_id = TestCount.course_id
+    LEFT JOIN (
+        SELECT course_id, COUNT(*) AS count
+        FROM Assignment
+        WHERE assignment_type = 'Participation'
+        GROUP BY course_id
+    ) AS ParticipationCount ON Course.course_id = ParticipationCount.course_id
+    GROUP BY Grade.student_id, Grade.assignment_id
+    ) AS AssignmentWeightedScores
 INNER JOIN Student ON AssignmentWeightedScores.student_id = Student.student_id
 WHERE
     Student.first_name = 'John' AND Student.last_name = 'Quincy';
