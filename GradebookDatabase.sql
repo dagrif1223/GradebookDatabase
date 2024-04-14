@@ -50,7 +50,7 @@ CREATE TABLE EnrolledList (
 INSERT INTO Course (course_id, department, course_number, course_name, course_semester, course_year, course_homework, course_project, course_test, course_participation) 
 VALUES 
 (1, 'Computer Science', 101, 'Introduction to Computer Science', 'Fall', 2024, .20, .25, .40, .15),
-(2, 'Computer Science', 102, 'Software Engineering', 'Fall', 2024, .25, .20, .45, .5),
+(2, 'Computer Science', 102, 'Software Engineering', 'Fall', 2024, .25, .20, .45, .10),
 (3, 'Computer Science', 103, 'Operating Systems', 'Spring', 2024, .20, .20, .25, .35);       
 
 INSERT INTO Assignment (assignment_id, assignment_name, assignment_type, course_id)
@@ -99,7 +99,27 @@ VALUES
 (9, 0.90, 1, 5),
 (10, 0.92, 2, 5),
 (11, 0.97, 1, 6),
-(12, 0.94, 2, 6);
+(12, 0.94, 2, 6),
+(13, 0.80, 3, 7),
+(14, 0.90, 4, 7),
+(15, 0.79, 3, 8),
+(16, 0.89, 4, 8),
+(17, 0.92, 3, 9),
+(18, 0.86, 4, 9),
+(19, 0.70, 3, 10),
+(20, 0.74, 4, 10),
+(21, 0.90, 3, 11),
+(22, 0.92, 4, 11),
+(23, 0.97, 5, 12),
+(24, 0.94, 6, 12),
+(25, 0.80, 5, 13),
+(26, 0.90, 6, 13),
+(27, 0.79, 5, 14),
+(28, 0.89, 6, 14),
+(29, 0.92, 5, 15),
+(30, 0.92, 6, 15);
+
+
 
 -- task 7
 INSERT INTO Assignment (assignment_id, assignment_name, assignment_type, course_id)
@@ -107,7 +127,7 @@ VALUE (16, 'Test 2', 'Test', 3);
 
 -- task 8
 UPDATE Course
-SET course_homework = 20, course_project = 40, course_test = 30, course_participation = 10
+SET course_homework = .20, course_project = .40, course_test = .30, course_participation = .10
 WHERE course_id = 3;
 
 -- task 9
@@ -120,9 +140,6 @@ UPDATE Grade
 JOIN Student ON Grade.student_id = Student.student_id
 SET score = score + .02
 WHERE Student.last_name LIKE '%Q%';
-
-
-# commands
 
 # commands
 
@@ -168,59 +185,42 @@ JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
 WHERE Assignment.course_id = 1;
 
 -- Compute the grade for a student (task 11)
+-- Calculate grade for Yinka Adeyemi across all courses
+WITH AssignmentWeights AS (
+    SELECT 
+        c.course_id,
+        c.course_homework,
+        c.course_project,
+        c.course_test,
+        c.course_participation
+    FROM Course c
+),
+StudentScores AS (
+    SELECT 
+        g.student_id,
+        a.assignment_type,
+        AVG(g.score) as avg_score,
+        a.course_id,
+        st.first_name,
+        st.last_name
+    FROM Grade g
+    JOIN Assignment a ON g.assignment_id = a.assignment_id
+    JOIN Student st ON g.student_id = st.student_id
+    WHERE g.student_id = 4
+    GROUP BY g.student_id, a.assignment_type, a.course_id, st.first_name, st.last_name
+)
 SELECT 
-    Student.first_name,
-    Student.last_name,
-    SUM(AssignmentWeightedScores.weighted_score) AS total_grade
-FROM
-    (SELECT 
-        Grade.student_id,
-        SUM(
-            CASE
-                WHEN Assignment.assignment_type = 'Homework' THEN 
-                    Grade.score * (Course.course_homework / COALESCE(HomeworkCount.count, 1))
-                WHEN Assignment.assignment_type = 'Project' THEN 
-                    Grade.score * (Course.course_project / COALESCE(ProjectCount.count, 1))
-                WHEN Assignment.assignment_type = 'Test' THEN 
-                    Grade.score * (Course.course_test / COALESCE(TestCount.count, 1))
-                WHEN Assignment.assignment_type = 'Participation' THEN 
-                    Grade.score * (Course.course_participation / COALESCE(ParticipationCount.count, 1))
-                ELSE 0
-            END
-        ) AS weighted_score
-    FROM
-        Grade
-    INNER JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
-    INNER JOIN Course ON Assignment.course_id = Course.course_id
-    LEFT JOIN (
-        SELECT course_id, COUNT(*) AS count
-        FROM Assignment
-        WHERE assignment_type = 'Homework'
-        GROUP BY course_id
-    ) AS HomeworkCount ON Course.course_id = HomeworkCount.course_id
-    LEFT JOIN (
-        SELECT course_id, COUNT(*) AS count
-        FROM Assignment
-        WHERE assignment_type = 'Project'
-        GROUP BY course_id
-    ) AS ProjectCount ON Course.course_id = ProjectCount.course_id
-    LEFT JOIN (
-        SELECT course_id, COUNT(*) AS count
-        FROM Assignment
-        WHERE assignment_type = 'Test'
-        GROUP BY course_id
-    ) AS TestCount ON Course.course_id = TestCount.course_id
-    LEFT JOIN (
-        SELECT course_id, COUNT(*) AS count
-        FROM Assignment
-        WHERE assignment_type = 'Participation'
-        GROUP BY course_id
-    ) AS ParticipationCount ON Course.course_id = ParticipationCount.course_id
-    GROUP BY Grade.student_id
-    ) AS AssignmentWeightedScores
-INNER JOIN Student ON AssignmentWeightedScores.student_id = Student.student_id
-WHERE
-    Student.first_name = 'John' AND Student.last_name = 'Quincy';
+    s.student_id,
+    s.first_name,
+    s.last_name,
+    aw.course_id,
+    COALESCE(SUM(CASE WHEN s.assignment_type = 'Homework' THEN s.avg_score * aw.course_homework END), 0) +
+    COALESCE(SUM(CASE WHEN s.assignment_type = 'Project' THEN s.avg_score * aw.course_project END), 0) +
+    COALESCE(SUM(CASE WHEN s.assignment_type = 'Test' THEN s.avg_score * aw.course_test END), 0) +
+    COALESCE(SUM(CASE WHEN s.assignment_type = 'Participation' THEN s.avg_score * aw.course_participation END), 0) as final_grade
+FROM StudentScores s
+JOIN AssignmentWeights aw ON s.course_id = aw.course_id
+GROUP BY s.student_id, s.first_name, s.last_name, aw.course_id;
 
 -- task 12
 SELECT 
@@ -287,4 +287,4 @@ FROM
     ) AS AssignmentWeightedScores
 INNER JOIN Student ON AssignmentWeightedScores.student_id = Student.student_id
 WHERE
-    Student.first_name = 'John' AND Student.last_name = 'Quincy';
+    Student.first_name = 'Yinka' AND Student.last_name = 'Adeyemi';
