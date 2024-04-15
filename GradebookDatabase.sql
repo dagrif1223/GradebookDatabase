@@ -1,4 +1,3 @@
-# schema
 DROP DATABASE IF EXISTS Gradebook;
 CREATE DATABASE Gradebook;
 # part 1 
@@ -100,48 +99,24 @@ VALUES
 (10, 0.92, 2, 5),
 (11, 0.97, 1, 6),
 (12, 0.94, 2, 6),
-(13, 0.80, 3, 7),
-(14, 0.90, 4, 7),
-(15, 0.79, 3, 8),
-(16, 0.89, 4, 8),
-(17, 0.92, 3, 9),
-(18, 0.86, 4, 9),
-(19, 0.70, 3, 10),
-(20, 0.74, 4, 10),
-(21, 0.90, 3, 11),
-(22, 0.92, 4, 11),
-(23, 0.97, 5, 12),
-(24, 0.94, 6, 12),
+(13, 0.92, 3, 7),
+(14, 0.98, 4, 7),
+(15, 0.65, 3, 8),
+(16, 0.84, 4, 8),
+(17, 0.93, 3, 9),
+(18, 0.89, 4, 9),
+(19, 0.84, 3, 10),
+(20, 0.84, 4, 10),
+(21, 0.96, 3, 11),
+(22, 0.75, 4, 11),
+(23, 0.89, 5, 12),
+(24, 0.73, 6, 12),
 (25, 0.80, 5, 13),
-(26, 0.90, 6, 13),
-(27, 0.79, 5, 14),
-(28, 0.89, 6, 14),
-(29, 0.92, 5, 15),
-(30, 0.92, 6, 15);
-
-
-
--- task 7
-INSERT INTO Assignment (assignment_id, assignment_name, assignment_type, course_id)
-VALUE (16, 'Test 2', 'Test', 3);
-
--- task 8
-UPDATE Course
-SET course_homework = .20, course_project = .40, course_test = .30, course_participation = .10
-WHERE course_id = 3;
-
--- task 9
-UPDATE Grade
-SET score = score + .02 
-WHERE assignment_id = 1;
-
--- task 10
-UPDATE Grade
-JOIN Student ON Grade.student_id = Student.student_id
-SET score = score + .02
-WHERE Student.last_name LIKE '%Q%';
-
-# commands
+(26, 0.68, 6, 13),
+(27, 0.91, 5, 14),
+(28, 0.77, 6, 14),
+(29, 0.59, 5, 15),
+(30, 0.85, 6, 15);
 
 -- Display contents of the Course table (3)
 SELECT * FROM Course;
@@ -158,12 +133,7 @@ SELECT * FROM Grade;
 -- Display enrolled list
 SELECT * FROM EnrolledList;
 
--- Display every student from a course (task 5, query 6)
-SELECT EnrolledList.student_id, Student.first_name, Student.last_name, Course.course_name
-FROM Student, Course, EnrolledList
-WHERE EnrolledList.student_id = Student.student_id AND EnrolledList.course_id = Course.course_id AND Course.course_id = 2;
-
--- Display average/highest/lowest of an assignment (task 4, query 7, 8, 9)
+-- Display average/highest/lowest of an assignment (task 4)
 SELECT AVG(Grade.score * 100)
 FROM Grade
 WHERE Grade.assignment_id = 1;
@@ -176,16 +146,46 @@ SELECT MIN(Grade.score * 100)
 FROM Grade
 WHERE Grade.assignment_id = 1;
 
--- List all students in a course and their scores on every assignment (task 6, query 10)
- 
- SELECT Grade.student_id, Student.first_name, Student.last_name, Assignment.assignment_name, Grade.score
+-- Display every student from a course (task 5)
+SELECT EnrolledList.student_id, Student.first_name, Student.last_name, Course.course_name
+FROM Student, Course, EnrolledList
+WHERE EnrolledList.student_id = Student.student_id AND EnrolledList.course_id = Course.course_id AND Course.course_id = 2;
+
+-- List all students in a course and their scores on every assignment (task 6)
+SELECT Grade.student_id, Student.first_name, Student.last_name, Assignment.assignment_name, Grade.score
 FROM Grade
 JOIN Student ON Grade.student_id = Student.student_id
 JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
 WHERE Assignment.course_id = 1;
 
+-- Add an assignment to a course (task 7)
+INSERT INTO Assignment (assignment_id, assignment_name, assignment_type, course_id)
+VALUE (16, 'Test 2', 'Test', 3);
+SELECT * FROM Assignment
+
+-- Change the percentages of the categories for a course (task 8)
+UPDATE Course
+SET course_homework = .20, course_project = .40, course_test = .30, course_participation = .10
+WHERE course_id = 3;
+SELECT * FROM Course
+
+-- Add 2 points to the score of each student on an assignment (task 9)
+UPDATE Grade
+SET score = score + .02 
+WHERE assignment_id = 1;
+SELECT * FROM Grade
+
+-- Add 2 points just to those students whose last name contains a ‘Q’ (task 10)
+UPDATE Grade
+JOIN Student ON Grade.student_id = Student.student_id
+SET score = score + .02
+WHERE Student.last_name LIKE '%Q%';
+
+SELECT Grade.*, Student.first_name, Student.last_name
+FROM Grade, Student
+WHERE Grade.student_id = Student.student_id
+
 -- Compute the grade for a student (task 11)
--- Calculate grade for Yinka Adeyemi across all courses
 WITH AssignmentWeights AS (
     SELECT 
         c.course_id,
@@ -222,7 +222,7 @@ FROM StudentScores s
 JOIN AssignmentWeights aw ON s.course_id = aw.course_id
 GROUP BY s.student_id, s.first_name, s.last_name, aw.course_id;
 
--- task 12
+-- Compute the grade for a student, where the lowest score for a given category is dropped (task 12)
 SELECT 
     Student.first_name,
     Student.last_name,
@@ -287,4 +287,4 @@ FROM
     ) AS AssignmentWeightedScores
 INNER JOIN Student ON AssignmentWeightedScores.student_id = Student.student_id
 WHERE
-    Student.first_name = 'Yinka' AND Student.last_name = 'Adeyemi';
+    Student.first_name = 'John' AND Student.last_name = 'Quincy';
