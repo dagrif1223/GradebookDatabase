@@ -21,6 +21,10 @@ You are asked to implement a grade book to keep track student grades for several
 11. Compute the grade for a student;
 12. Compute the grade for a student, where the lowest score for a given category is dropped.
 
+## ER Diagram
+
+![image](https://github.com/dagrif1223/GradebookDatabase/assets/104702278/eb8dd536-3f63-47cd-8145-112ab23da375)
+
 ## Execution Instructions
 
 Head to the free online environment dbfiddle.uk, select the "MySQL" engine from the list of engines, then paste the sql code from this repository onto the textbox(es) and hit run.
