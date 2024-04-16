@@ -23,7 +23,7 @@ You are asked to implement a grade book to keep track student grades for several
 
 ## ER Diagram
 
-![image](https://github.com/dagrif1223/GradebookDatabase/assets/104702278/eb8dd536-3f63-47cd-8145-112ab23da375)
+![image](https://github.com/dagrif1223/GradebookDatabase/assets/104702278/32d0d911-09c3-4f68-851b-d6da4d99f99e)
 
 ## Execution Instructions
 
