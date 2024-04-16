@@ -118,7 +118,8 @@ VALUES
 (29, 0.59, 5, 15),
 (30, 0.85, 6, 15);
 
--- Display contents of the Course table (3)
+-- (task 3)
+-- Display contents of the Course table
 SELECT * FROM Course;
 
 -- Display contents of the Assignment table
@@ -223,68 +224,74 @@ JOIN AssignmentWeights aw ON s.course_id = aw.course_id
 GROUP BY s.student_id, s.first_name, s.last_name, aw.course_id;
 
 -- Compute the grade for a student, where the lowest score for a given category is dropped (task 12)
-SELECT 
-    Student.first_name,
-    Student.last_name,
-    SUM(AssignmentWeightedScores.weighted_score) AS total_grade
-FROM
-    (SELECT 
-        Grade.student_id,
-        SUM(
-            CASE
-                WHEN Assignment.assignment_type = 'Homework' THEN 
-                    CASE
-                        WHEN Grade.score != LowestHomeworkGrade.lowest_score THEN
-                            Grade.score * (Course.course_homework / (HomeworkCount.count - 1))
-                        ELSE
-                            0
-                    END
-                WHEN Assignment.assignment_type = 'Project' THEN 
-                    Grade.score * (Course.course_project / COALESCE(ProjectCount.count, 1))
-                WHEN Assignment.assignment_type = 'Test' THEN 
-                    Grade.score * (Course.course_test / COALESCE(TestCount.count, 1))
-                WHEN Assignment.assignment_type = 'Participation' THEN 
-                    Grade.score * (Course.course_participation / COALESCE(ParticipationCount.count, 1))
-                ELSE 0
-            END
-        ) AS weighted_score
-    FROM
-        Grade
-    INNER JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
-    INNER JOIN Course ON Assignment.course_id = Course.course_id
-    LEFT JOIN (
-        SELECT course_id, COUNT(*) AS count
-        FROM Assignment
-        WHERE assignment_type = 'Homework'
-        GROUP BY course_id
-    ) AS HomeworkCount ON Course.course_id = HomeworkCount.course_id
-    LEFT JOIN (
-        SELECT Assignment.course_id, MIN(Grade.score) AS lowest_score
+WITH LowestHomeworkScore AS (
+    SELECT 
+        g.student_id,
+        MIN(g.score) as lowest_homework_score
+    FROM Grade g
+    JOIN Assignment a ON g.assignment_id = a.assignment_id
+    WHERE a.assignment_type = 'Homework'
+    GROUP BY g.student_id
+),
+FilteredGrades AS (
+    SELECT 
+        g.student_id,
+        g.assignment_id,
+        g.score
+    FROM Grade g
+    JOIN LowestHomeworkScore lhs ON g.student_id = lhs.student_id
+    WHERE g.score > lhs.lowest_homework_score OR g.assignment_id <> (
+        SELECT assignment_id
         FROM Grade
-        INNER JOIN Assignment ON Grade.assignment_id = Assignment.assignment_id
-        WHERE Assignment.assignment_type = 'Homework'
-        GROUP BY Assignment.course_id
-    ) AS LowestHomeworkGrade ON Course.course_id = LowestHomeworkGrade.course_id
-    LEFT JOIN (
-        SELECT course_id, COUNT(*) AS count
-        FROM Assignment
-        WHERE assignment_type = 'Project'
-        GROUP BY course_id
-    ) AS ProjectCount ON Course.course_id = ProjectCount.course_id
-    LEFT JOIN (
-        SELECT course_id, COUNT(*) AS count
-        FROM Assignment
-        WHERE assignment_type = 'Test'
-        GROUP BY course_id
-    ) AS TestCount ON Course.course_id = TestCount.course_id
-    LEFT JOIN (
-        SELECT course_id, COUNT(*) AS count
-        FROM Assignment
-        WHERE assignment_type = 'Participation'
-        GROUP BY course_id
-    ) AS ParticipationCount ON Course.course_id = ParticipationCount.course_id
-    GROUP BY Grade.student_id, Grade.assignment_id
-    ) AS AssignmentWeightedScores
-INNER JOIN Student ON AssignmentWeightedScores.student_id = Student.student_id
-WHERE
-    Student.first_name = 'John' AND Student.last_name = 'Quincy';
+        WHERE student_id = g.student_id AND score = lhs.lowest_homework_score AND assignment_id IN (
+            SELECT assignment_id
+            FROM Assignment
+            WHERE assignment_type = 'Homework'
+        )
+    )
+),
+AssignmentWeights AS (
+    SELECT 
+        c.course_id,
+        c.course_homework,
+        c.course_project,
+        c.course_test,
+        c.course_participation
+    FROM Course c
+),
+StudentScores AS (
+    SELECT 
+        f.student_id,
+        a.assignment_type,
+        AVG(f.score) as avg_score,
+        a.course_id,
+        st.first_name,
+        st.last_name
+    FROM FilteredGrades f
+    JOIN Assignment a ON f.assignment_id = a.assignment_id
+    JOIN Student st ON f.student_id = st.student_id
+    GROUP BY f.student_id, a.assignment_type, a.course_id, st.first_name, st.last_name
+),
+FinalGrade AS (
+    SELECT 
+        s.student_id,
+        s.first_name,
+        s.last_name,
+        aw.course_id,
+        (COALESCE(SUM(CASE WHEN s.assignment_type = 'Homework' THEN s.avg_score * aw.course_homework END), 0) +
+         COALESCE(SUM(CASE WHEN s.assignment_type = 'Project' THEN s.avg_score * aw.course_project END), 0) +
+         COALESCE(SUM(CASE WHEN s.assignment_type = 'Test' THEN s.avg_score * aw.course_test END), 0) +
+         COALESCE(SUM(CASE WHEN s.assignment_type = 'Participation' THEN s.avg_score * aw.course_participation END), 0)) as final_grade
+    FROM StudentScores s
+    CROSS JOIN AssignmentWeights aw
+    GROUP BY s.student_id, s.first_name, s.last_name, aw.course_id
+)
+SELECT 
+    f.student_id,
+    f.first_name,
+    f.last_name,
+    f.course_id,
+    f.final_grade
+FROM FinalGrade f
+JOIN EnrolledList el ON f.student_id = el.student_id AND f.course_id = el.course_id
+WHERE f.student_id = 3;
